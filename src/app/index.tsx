@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, Image, Keyboard, Alert } from 'react-native';
+import { View, Text, Image, Keyboard, Alert, KeyboardAvoidingView, TouchableWithoutFeedback, Platform } from 'react-native';
 import {
   MapPin,
   Calendar as IconCalendar,
@@ -25,7 +25,6 @@ import { GuestEmail } from '@/components/email';
 import { Calendar } from '@/components/calendar';
 import { router } from 'expo-router';
 import { Loading } from '@/components/loading';
-import { set } from 'zod';
 
 enum StepForm {
   TRIP_DETAILS = 1,
@@ -52,6 +51,10 @@ export default function Index() {
 
   //MODAL
   const [showModal, setShowModal] = useState(MODAL.NONE)
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+
 
   function handleNextStepForm() {
     if (
@@ -166,8 +169,7 @@ export default function Index() {
 
       const trip = await tripServer.getById(tripId)
       console.log(trip)
-
-      if(trip) {
+      if (trip) {
         return router.navigate("/trip/" + tripId)
       }
 
@@ -177,7 +179,22 @@ export default function Index() {
     }
   }
 
-  
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+      setKeyboardVisible(true);
+    });
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+      setKeyboardVisible(false);
+    });
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+
   useEffect(() => {
     getTrip()
   }, [])
@@ -185,145 +202,162 @@ export default function Index() {
   if (isGettingTrip) {
     return <Loading />
   }
-  
+
   return (
-    <View className=' flex-1 items-center justify-center px-5'>
-      <Image
-        source={require("@/assets/logo.png")}
-        className='h-8'
-        resizeMode='contain'
-      />
-      <Image source={require("@/assets/bg.png")} className='absolute' />
-
-
-      <Text className='text-zinc-400 font-regular text-center text-lg mt-3'>
-        Convide seus amigos e planeje sua{"\n"}próxima viagem
-      </Text>
-
-      <View className='w-full bg-zinc-900 p-4 rounded-xl my-8 border border-zinc-800'>
-        <Input >
-          <MapPin color={colors.zinc[400]} size={20} />
-          <Input.Field
-            placeholder='Para onde?'
-            editable={stepForm === StepForm.TRIP_DETAILS}
-            onChangeText={setDestination}
-            value={destination}
+    
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      enabled
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View className=' flex-1 items-center justify-center px-5'>
+          <Image
+            source={require("@/assets/logo.png")}
+            className='h-8'
+            resizeMode='contain'
           />
-        </Input>
+          <Image source={require("@/assets/bg.png")} className='absolute' />
 
-        <Input >
-          <IconCalendar color={colors.zinc[400]} size={20} />
-          <Input.Field
-            placeholder='Quando?'
-            editable={stepForm === StepForm.TRIP_DETAILS}
-            onFocus={() => Keyboard.dismiss()}
-            showSoftInputOnFocus={false}
-            onPressIn={() =>
-              stepForm === StepForm.TRIP_DETAILS &&
-              setShowModal(MODAL.CALENDAR)}
-            value={selectedDates.formatDatesInText}
-          />
-        </Input>
+          <View>
+            <Text className='text-zinc-400 font-regular text-center text-lg mt-3'>
+              Convide seus amigos e planeje sua{"\n"}próxima viagem
+            </Text>
+          </View>
 
-        {stepForm === StepForm.ADD_EMAIL && (
-          <>
-            <View className='border-b py-3 border-zinc-800'>
-              <Button
-                variant='secondary'
-                onPress={() => setStepForm(StepForm.TRIP_DETAILS)}
-              >
-                <Button.Title>Alterar local/data</Button.Title>
-                <Settings2 color={colors.zinc[200]} size={20} />
-              </Button>
-            </View>
-
+          <View className='w-full bg-zinc-900 p-4 rounded-xl my-8 border border-zinc-800'>
             <Input >
-              <UserRoundPlus color={colors.zinc[400]} size={20} />
+              <MapPin color={colors.zinc[400]} size={20} />
               <Input.Field
-                placeholder='Quem estará na viagem?'
-                autoCorrect={false}
-                value={
-                  emailsToInvite.length > 0
-                    ? `${emailsToInvite.length} pessoa(s) convidada(s)`
-                    : ""
-                }
-                onPress={() => {
-                  Keyboard.dismiss()
-                  setShowModal(MODAL.GUESTS)
-                }}
-                showSoftInputOnFocus={false}
+                placeholder='Para onde?'
+                editable={stepForm === StepForm.TRIP_DETAILS}
+                onChangeText={setDestination}
+                value={destination}
               />
             </Input>
-          </>
-        )}
 
-        <Button onPress={handleNextStepForm} isLoading={isCreatingTrip}>
-          <Button.Title>
-            {
-              stepForm === StepForm.TRIP_DETAILS
-                ? "Continuar"
-                : "Confirmar Viagem"
-            }
-          </Button.Title>
-          <ArrowRight color={colors.lime[950]} size={20} />
-        </Button>
-      </View>
+            <Input >
+              <IconCalendar color={colors.zinc[400]} size={20} />
+              <Input.Field
+                placeholder='Quando?'
+                editable={stepForm === StepForm.TRIP_DETAILS}
+                onFocus={() => Keyboard.dismiss()}
+                showSoftInputOnFocus={false}
+                onPressIn={() =>
+                  stepForm === StepForm.TRIP_DETAILS &&
+                  setShowModal(MODAL.CALENDAR)}
+                value={selectedDates.formatDatesInText}
+              />
+            </Input>
 
-      <Text className=" text-zinc-500 font-regular text-center text-base">
-        Ao planejar sua viagem pela plann.er você automaticamente concorda com nossos{" "}
-        <Text className='text-zinc-300 underline'> termos de uso e políticas de privacidade.</Text>
-      </Text>
+            {stepForm === StepForm.ADD_EMAIL && (
+              <>
+                <View className='border-b py-3 border-zinc-800'>
+                  <Button
+                    variant='secondary'
+                    onPress={() => setStepForm(StepForm.TRIP_DETAILS)}
+                  >
+                    <Button.Title>Alterar local/data</Button.Title>
+                    <Settings2 color={colors.zinc[200]} size={20} />
+                  </Button>
+                </View>
 
-      <Modal title="Selecionar datas"
-        subtitle='Selecione a data de ida e volta da viagem'
-        visible={showModal === MODAL.CALENDAR}
-        onClose={() => setShowModal(MODAL.NONE)}
-      >
-        <View className='gap-4 mt-4 '>
-          <Calendar
-            minDate={dayjs().toISOString()}
-            onDayPress={handleSelectDates}
-            markedDates={selectedDates.dates}
-          />
-          <Button onPress={() => setShowModal(MODAL.NONE)}>
-            <Button.Title>Confirmar</Button.Title>
-          </Button>
+                <Input >
+                  <UserRoundPlus color={colors.zinc[400]} size={20} />
+                  <Input.Field
+                    placeholder='Quem estará na viagem?'
+                    autoCorrect={false}
+                    value={
+                      emailsToInvite.length > 0
+                        ? `${emailsToInvite.length} pessoa(s) convidada(s)`
+                        : ""
+                    }
+                    onPress={() => {
+                      Keyboard.dismiss()
+                      setShowModal(MODAL.GUESTS)
+                    }}
+                    showSoftInputOnFocus={false}
+                  />
+                </Input>
+              </>
+            )}
+
+            <Button onPress={handleNextStepForm} isLoading={isCreatingTrip}>
+              <Button.Title>
+                {
+                  stepForm === StepForm.TRIP_DETAILS
+                    ? "Continuar"
+                    : "Confirmar Viagem"
+                }
+              </Button.Title>
+              <ArrowRight color={colors.lime[950]} size={20} />
+            </Button>
+          </View>
+
+          <View>
+            <Text className=" text-zinc-500 font-regular text-center text-base">
+              Ao planejar sua viagem pela plann.er você automaticamente concorda com nossos{" "}
+              <Text className='text-zinc-300 underline'> termos de uso e políticas de privacidade.</Text>
+            </Text>
+          </View>
+
+          <Modal title="Selecionar datas"
+            subtitle='Selecione a data de ida e volta da viagem'
+            visible={showModal === MODAL.CALENDAR}
+            onClose={() => setShowModal(MODAL.NONE)}
+          >
+            <View className='gap-4 mt-4 '>
+              <Calendar
+                minDate={dayjs().toISOString()}
+                onDayPress={handleSelectDates}
+                markedDates={selectedDates.dates}
+              />
+              <Button onPress={() => setShowModal(MODAL.NONE)}>
+                <Button.Title>Confirmar</Button.Title>
+              </Button>
+            </View>
+          </Modal>
+
+          <Modal
+            title='Selecionar convidados'
+            subtitle='Os convidados irão receber e-mails para confirmar a participação na viagem.'
+            visible={showModal === MODAL.GUESTS}
+            onClose={() => setShowModal(MODAL.NONE)}
+          >
+            <View style={Platform.OS === 'ios' ? { paddingBottom: keyboardHeight } : {}}>
+              <View className='"my-2 flex-wrap gap-2 border-b border-zinc-800 py-5 items-start'>
+                {
+                  emailsToInvite.length > 0 ? (
+                    emailsToInvite.map((email) => (
+                      <GuestEmail key={email} email={email} onRemove={() => handleRemoveEmail(email)} />
+                    ))
+                  ) : (
+                    <View>
+                      <Text className='text-zinc-600 text-base font-regular' >Nenhum email adicionado.</Text>
+                    </View>
+                  )
+                }
+              </View>
+              <View className='gap-4 mt-4'>
+                <Input variant='secondary'>
+                  <AtSign color={colors.zinc[400]} size={20} />
+                  <Input.Field
+                    placeholder='Digite o e-mail do convidado'
+                    keyboardType='email-address'
+                    onChangeText={(text) => setEmailtoInvite(text.toLocaleLowerCase())}
+                    value={emailToInvite}
+                    returnKeyType="send"
+                    onSubmitEditing={handleAddEmail}
+                  />
+                </Input>
+                <Button onPress={handleAddEmail}>
+                  <Button.Title>Adicionar</Button.Title>
+                </Button>
+              </View>
+            </View>
+          </Modal>
         </View>
-      </Modal>
-      <Modal
-        title='Selecionar convidados'
-        subtitle='Os convidados irão receber e-mails para confirmar a participação na viagem.'
-        visible={showModal === MODAL.GUESTS}
-        onClose={() => setShowModal(MODAL.NONE)}
-      >
-        <View className='"my-2 flex-wrap gap-2 border-b border-zinc-800 py-5 items-start'>
-          {
-            emailsToInvite.length > 0 ? (
-              emailsToInvite.map((email) => (
-                <GuestEmail key={email} email={email} onRemove={() => handleRemoveEmail(email)} />
-              ))
-            ) : (
-              <Text className='text-zinc-600 text-base font-regular' >Nenhum email adicionado.</Text>
-            )
-          }
-        </View>
-        <View className='gap-4 mt-4'>
-          <Input variant='secondary'>
-            <AtSign color={colors.zinc[400]} size={20} />
-            <Input.Field
-              placeholder='Digite o e-mail do convidado'
-              keyboardType='email-address'
-              onChangeText={(text) => setEmailtoInvite(text.toLocaleLowerCase())}
-              value={emailToInvite}
-              returnKeyType="send"
-              onSubmitEditing={handleAddEmail}
-            />
-          </Input>
-          <Button onPress={handleAddEmail}>
-            <Button.Title>Convidar</Button.Title>
-          </Button>
-        </View>
-      </Modal>
-    </View>
+      </TouchableWithoutFeedback >
+    </KeyboardAvoidingView >
   );
 }

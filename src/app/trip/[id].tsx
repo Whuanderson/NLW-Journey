@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, TouchableOpacity, Keyboard, Alert, Text } from "react-native";
+import { View, TouchableOpacity, Keyboard, Alert, Text, Platform } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { DateData } from "react-native-calendars";
 import {
@@ -7,6 +7,7 @@ import {
   Info,
   MapPin,
   Settings2,
+  X,
   Calendar as IconCalendar,
   User,
   Mail,
@@ -47,6 +48,7 @@ export default function Trip() {
 
   //MODAL
   const [showModal, setShowModal] = useState(MODAL.NONE)
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   //DATA
   const [tripDetails, setTripDetails] = useState({} as TripData)
@@ -204,6 +206,20 @@ export default function Trip() {
   }
 
   useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []); 
+
+  useEffect(() => {
     getTripDetails()
   }, [])
 
@@ -222,6 +238,13 @@ export default function Trip() {
           onPress={() => setShowModal(MODAL.UPDATE_TRIP)} >
           <View className="w-9 h-9 bg-zinc-800 items-center justify-center rounded">
             <Settings2 color={colors.zinc[400]} size={20} />
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          activeOpacity={0.6}
+          onPress={handleRemoveTrip} >
+          <View className="w-9 h-9 bg-zinc-800 items-center justify-center rounded">
+            <X color={colors.zinc[400]} size={20} />
           </View>
         </TouchableOpacity>
       </Input>
@@ -267,7 +290,7 @@ export default function Trip() {
         visible={showModal === MODAL.UPDATE_TRIP}
         onClose={() => setShowModal(MODAL.NONE)}
       >
-        <View className="gap-2 my-4">
+        <View className="gap-2 my-4" style={Platform.OS === 'ios' ? { paddingBottom: keyboardHeight } : {}}>
           <Input variant="secondary">
             <MapPin color={colors.zinc[400]} size={20} />
             <Input.Field

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Alert, Text, View, FlatList } from "react-native"
+import { Alert, Text, View, FlatList, Keyboard, Platform } from "react-native"
 import { Plus } from "lucide-react-native"
 
 import { colors } from "@/styles/colors"
@@ -17,6 +17,7 @@ import { Participant, ParticipantProps } from "@/components/participant"
 export function Details({ tripId }: { tripId: string }) {
   // MODAL
   const [showNewLinkModal, setShowNewLinkModal] = useState(false)
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // LOADING
   const [isCreatingLinkTrip, setIsCreatingLinkTrip] = useState(false)
@@ -83,12 +84,26 @@ export function Details({ tripId }: { tripId: string }) {
   }
 
   useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     getTripLinks()
     getTripParticipants()
   }, [])
 
   return (
-    <View className="flex-1 mt-10">
+    <View className="flex-1 mt-10" >
       <Text className="text-zinc-50 text-2xl font-semibold mb-2">
         Links importantes
       </Text>
@@ -132,22 +147,24 @@ export function Details({ tripId }: { tripId: string }) {
         visible={showNewLinkModal}
         onClose={() => setShowNewLinkModal(false)}
       >
-        <View className="gap-2 mb-3">
-          <Input variant="secondary">
-            <Input.Field
-              placeholder="Título do link"
-              onChangeText={setLinkTitle}
-            />
-          </Input>
+        <View style={Platform.OS === 'ios' ? { paddingBottom: keyboardHeight } : {}}>
+          <View className="gap-2 mb-3">
+            <Input variant="secondary">
+              <Input.Field
+                placeholder="Título do link"
+                onChangeText={setLinkTitle}
+              />
+            </Input>
 
-          <Input variant="secondary">
-            <Input.Field placeholder="URL" onChangeText={setLinkURL} />
-          </Input>
+            <Input variant="secondary">
+              <Input.Field placeholder="URL" onChangeText={setLinkURL} />
+            </Input>
+          </View>
+
+          <Button isLoading={isCreatingLinkTrip} onPress={handleCreateTripLink}>
+            <Button.Title>Salvar link</Button.Title>
+          </Button>
         </View>
-
-        <Button isLoading={isCreatingLinkTrip} onPress={handleCreateTripLink}>
-          <Button.Title>Salvar link</Button.Title>
-        </Button>
       </Modal>
     </View>
   )
